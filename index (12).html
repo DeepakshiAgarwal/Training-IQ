@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TrainingIQ — Assessment Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f16;color:#e8e8f0;min-height:100vh}
+input,textarea,select,button{font-family:inherit}
+::placeholder{color:#3a3a55}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#ffffff18;border-radius:4px}
+select option{background:#1a1a26}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px #7c6fff44}50%{box-shadow:0 0 40px #7c6fff88}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes bar{0%{width:5%}50%{width:80%}100%{width:95%}}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#7c6fff88!important;box-shadow:0 0 0 3px #7c6fff18}
+button:hover{opacity:.85}button:active{transform:scale(.98)}
+.fade{animation:up .25s ease}
+.spin{animation:spin 1.2s linear infinite;display:inline-block}
+
+/* Layout helpers */
+.center{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.col{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:8px}
+
+/* Card */
+.card{background:#1a1a26;border-radius:14px;border:1px solid rgba(255,255,255,.07);padding:22px;margin-bottom:14px}
+
+/* Inputs */
+.inp{width:100%;background:#12121e;border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:11px 14px;font-size:14px;color:#e8e8f0;resize:vertical}
+.inp-sm{padding:6px 9px;font-size:13px}
+
+/* Buttons */
+.btn{border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#7c6fff,#a855f7)}
+.btn-sm{padding:7px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+.btn-ghost{background:rgba(255,255,255,.05);color:#6b6b8a;border:1px solid rgba(255,255,255,.07)}
+.btn-green{background:linear-gradient(135deg,#22c55e,#16a34a)}
+.btn-red{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+.btn-purple{background:rgba(124,111,255,.12);color:#7c6fff;border:1px solid rgba(124,111,255,.25)}
+.btn-full{width:100%;padding:14px;font-size:15px}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;background:#16161f;border-radius:12px;padding:4px;border:1px solid rgba(255,255,255,.07);margin-bottom:22px}
+.tab{flex:1;padding:10px 8px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:500;background:transparent;color:#6b6b8a;transition:all .2s}
+.tab.active{background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;font-weight:700}
+
+/* Toast */
+#toast{position:fixed;top:18px;right:18px;z-index:9999;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;max-width:320px;display:none;animation:up .2s ease}
+#toast.ok{background:#081a0e;color:#4ade80;border:1px solid #4ade8033}
+#toast.err{background:#1c0808;color:#f87171;border:1px solid #f8717133}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#1a1a26;border-radius:18px;padding:36px;max-width:400px;width:100%;border:1px solid rgba(124,111,255,.2);box-shadow:0 20px 60px rgba(0,0,0,.7);animation:up .2s ease}
+
+/* Upload zone */
+.upload-zone{border:2px dashed rgba(255,255,255,.1);border-radius:16px;padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#1a1a26;margin-bottom:14px}
+.upload-zone:hover,.upload-zone.drag{border-color:#7c6fff;background:#7c6fff0a}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{padding:11px 14px;text-align:left;font-weight:600;color:#6b6b8a;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.2);white-space:nowrap}
+.tbl td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.tbl tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+
+/* Pills */
+.pill{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700;display:inline-block}
+.pill-green{color:#22c55e;background:#22c55e18;border:1px solid #22c55e33}
+.pill-red{color:#ef4444;background:#ef444418;border:1px solid #ef444433}
+.pill-purple{color:#7c6fff;background:#7c6fff18;border:1px solid #7c6fff33}
+.pill-gray{color:#6b6b8a;background:#ffffff08;border:1px solid rgba(255,255,255,.1)}
+
+/* Dot nav */
+.dots{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.dot{width:9px;height:9px;border-radius:50%;cursor:pointer;transition:background .2s;background:rgba(255,255,255,.15)}
+.dot.done{background:#7c6fff}
+.dot.cur{background:rgba(124,111,255,.45)}
+
+/* Progress bar */
+.prog-wrap{height:3px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;margin-bottom:20px}
+.prog-fill{height:100%;background:linear-gradient(90deg,#7c6fff,#a855f7);border-radius:3px;transition:width .35s}
+
+/* Sticky header */
+.admin-header{background:#1a1a26;border-bottom:1px solid rgba(255,255,255,.07);padding:13px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px)}
+
+/* Result card */
+.result-hero{border-radius:18px;padding:36px 28px;text-align:center;margin-bottom:20px}
+
+/* Metric cards */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.metric{background:#1a1a26;border-radius:12px;border:1px solid rgba(255,255,255,.07);padding:18px;text-align:center}
+.metric-val{font-size:26px;font-weight:800;margin-bottom:3px}
+.metric-lbl{font-size:11px;color:#6b6b8a;text-transform:uppercase;letter-spacing:.4px}
+
+/* Option buttons in quiz */
+.option{padding:13px 16px;border-radius:10px;cursor:pointer;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;gap:12px;align-items:center;transition:all .15s;margin-bottom:8px}
+.option:hover{border-color:rgba(124,111,255,.4);background:rgba(124,111,255,.06)}
+.option.selected{border-color:#7c6fff;background:#7c6fff12}
+.option-dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.option.selected .option-dot{border-color:#7c6fff;background:#7c6fff}
+.option-inner{width:7px;height:7px;border-radius:50%;background:#fff;display:none}
+.option.selected .option-inner{display:block}
+
+/* Responsive */
+@media(max-width:600px){
+  .admin-header{padding:11px 14px}
+  .card{padding:16px}
+  .modal{padding:24px}
+}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const ADMIN_PASS = "admin@123";
+const API_KEY_STORAGE = "tiq_apikey";
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const S = {
+  view: "home",        // home | admin | quiz | result
+  quizzes: [],
+  attempts: [],
+  auth: false,
+  adminTab: "upload",  // upload | edit | dashboard
+  editing: null,
+  uploading: false,
+  copied: null,
+  // quiz session
+  activeQuizId: null,
+  agentName: "",
+  agentEid: "",
+  quizStarted: false,
+  questions: [],
+  curQ: 0,
+  answers: {},
+  timeLeft: null,
+  timerInterval: null,
+  result: null,
+  // dashboard
+  fQuiz: "all",
+  fAgent: "",
+  // apikey
+  apiKey: localStorage.getItem(API_KEY_STORAGE) || "",
+};
+
+// ═══════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════
+const DB = {
+  get(k){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null} },
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch{} },
+  del(k){ try{localStorage.removeItem(k)}catch{} },
+  keys(p){ try{return Object.keys(localStorage).filter(k=>k.startsWith(p))}catch{return[]} }
+};
+
+function loadData(){
+  S.quizzes = DB.keys("tiq:q:").map(k=>DB.get(k)).filter(Boolean);
+  S.attempts = DB.keys("tiq:a:").map(k=>DB.get(k)).filter(Boolean);
+  S.auth = DB.get("tiq:auth") === true;
+  S.apiKey = localStorage.getItem(API_KEY_STORAGE) || "";
+}
+
+function saveQuiz(q){
+  DB.set("tiq:q:"+q.id, q);
+  S.quizzes = [...S.quizzes.filter(x=>x.id!==q.id), q];
+}
+function delQuiz(id){
+  DB.del("tiq:q:"+id);
+  S.quizzes = S.quizzes.filter(x=>x.id!==id);
+}
+function saveAttempt(a){
+  DB.set("tiq:a:"+a.id, a);
+  S.attempts = [...S.attempts, a];
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+let toastTimer;
+function toast(msg, err=false){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = err ? "err" : "ok";
+  el.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.style.display="none"; }, 3500);
+}
+
+function $(sel, ctx=document){ return ctx.querySelector(sel); }
+function $$(sel, ctx=document){ return [...ctx.querySelectorAll(sel)]; }
+
+// ═══════════════════════════════════════════
+// FILE EXTRACTION
+// ═══════════════════════════════════════════
+async function extractText(file){
+  const ext = file.name.split(".").pop().toLowerCase();
+  if(ext==="txt") return new Promise((ok,no)=>{
+    const r=new FileReader(); r.onload=e=>ok(e.target.result); r.onerror=no; r.readAsText(file);
+  });
+  if(ext==="docx"||ext==="doc") return new Promise((ok,no)=>{
+    const r=new FileReader();
+    r.onload=async e=>{
+      try{ const o=await mammoth.extractRawText({arrayBuffer:e.target.result}); ok(o.value.trim()); }
+      catch(e){ no(e); }
+    };
+    r.onerror=no; r.readAsArrayBuffer(file);
+  });
+  if(ext==="pdf") return new Promise((ok,no)=>{
+    const r=new FileReader();
+    r.onload=async e=>{
+      try{
+        pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        const pdf=await pdfjsLib.getDocument({data:e.target.result}).promise;
+        let t="";
+        for(let i=1;i<=Math.min(pdf.numPages,30);i++){
+          const pg=await pdf.getPage(i);
+          const ct=await pg.getTextContent();
+          t+=ct.items.map(x=>x.str).join(" ")+"\n";
+        }
+        ok(t.trim());
+      }catch(e){ no(e); }
+    };
+    r.onerror=no; r.readAsArrayBuffer(file);
+  });
+  throw new Error("Use PDF, DOCX, or TXT only.");
+}
+
+// ═══════════════════════════════════════════
+// AI QUIZ GENERATION
+// ═══════════════════════════════════════════
+async function generateQuiz(text, title){
+  const key = S.apiKey;
+  if(!key) throw new Error("API key required. Click 'Set API Key' button.");
+  const res = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": key,
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true"
+    },
+    body: JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:3000,
+      system:`Generate exactly 10 quiz questions from this training document. Mix MCQ and scenario-based questions that test real understanding. Return ONLY raw JSON with no markdown or explanation:
+{"questions":[{"id":"q1","type":"mcq","text":"Question?","options":["A","B","C","D"],"correct":0,"explanation":"Why A is correct"},{"id":"q2","type":"scenario","text":"Scenario?","options":["A","B","C","D"],"correct":1,"explanation":"Why B is correct"}]}
+Rules: correct is 0-indexed. Make questions specific to this document. Simple clear language.`,
+      messages:[{role:"user",content:`Title: ${title}\n\n${text.slice(0,7000)}`}]
+    })
+  });
+  if(!res.ok){
+    const e = await res.json().catch(()=>({}));
+    throw new Error(e?.error?.message || "API error "+res.status);
+  }
+  const d = await res.json();
+  const raw = d.content?.[0]?.text || "";
+  const clean = raw.replace(/```json|```/g,"").trim();
+  const start = clean.indexOf("{");
+  return JSON.parse(start>0?clean.slice(start):clean);
+}
+
+// ═══════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════
+function exportCSV(){
+  const filtered = getFiltered();
+  const rows = [["Agent","ID","Quiz","Score","Percent","Status","Date"]];
+  filtered.forEach(a=>{
+    const q=S.quizzes.find(x=>x.id===a.quizId);
+    rows.push([a.name,a.eid,q?.title||"?",`${a.score}/${a.total}`,a.pct+"%",a.passed?"Pass":"Fail",new Date(a.ts).toLocaleDateString()]);
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  Object.assign(document.createElement("a"),{href:url,download:"results.csv"}).click();
+  URL.revokeObjectURL(url);
+}
+
+function getFiltered(){
+  return S.attempts.filter(a=>{
+    if(S.fQuiz!=="all"&&a.quizId!==S.fQuiz) return false;
+    if(S.fAgent&&!a.name.toLowerCase().includes(S.fAgent.toLowerCase())&&!a.eid.toLowerCase().includes(S.fAgent.toLowerCase())) return false;
+    return true;
+  }).sort((a,b)=>b.ts-a.ts);
+}
+
+// ═══════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════
+function render(){
+  const app = document.getElementById("app");
+  if(S.view==="home") app.innerHTML = renderHome();
+  else if(S.view==="admin") app.innerHTML = renderAdmin();
+  else if(S.view==="quiz") app.innerHTML = renderQuiz();
+  else if(S.view==="result") app.innerHTML = renderResult();
+  bindEvents();
+}
+
+function nav(view){ S.view=view; render(); }
+
+// ═══════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════
+function renderHome(){
+  const pub = S.quizzes.filter(q=>q.published);
+  return `
+  <div class="center">
+    <div style="max-width:460px;width:100%;animation:up .3s ease">
+      <div style="text-align:center;margin-bottom:36px">
+        <div style="font-size:54px;margin-bottom:12px;animation:glow 3s ease-in-out infinite;display:inline-block;border-radius:16px;padding:8px">📋</div>
+        <h1 style="font-size:34px;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#fff,#a5b4fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent">TrainingIQ</h1>
+        <p style="color:#6b6b8a;font-size:15px;line-height:1.65">Upload training docs · AI creates quiz<br>Share with agents · Track results</p>
+      </div>
+      <div class="col">
+        <button class="btn btn-full" id="adminBtn">🔐 &nbsp;Admin Dashboard</button>
+        <div class="card" style="padding:18px">
+          <p style="color:#6b6b8a;font-size:13px;margin-bottom:10px">Agent? Enter your quiz link or ID:</p>
+          <div class="row">
+            <input id="linkBox" class="inp" placeholder="Paste quiz link or ID…" style="flex:1"/>
+            <button class="btn btn-sm" id="goBtn" style="white-space:nowrap">Go →</button>
+          </div>
+        </div>
+        ${pub.length ? `
+        <div class="card" style="padding:18px">
+          <p style="font-weight:700;margin-bottom:12px;font-size:14px">Available Quizzes</p>
+          ${pub.map(q=>`
+          <div class="option" data-qid="${q.id}" id="homeQ_${q.id}" style="margin-bottom:6px">
+            <div style="flex:1">
+              <span style="font-weight:600;font-size:14px">${esc(q.title)}</span>
+            </div>
+            <span style="color:#6b6b8a;font-size:12px">${q.questions?.length||0}Q · ${q.timeLimit}min</span>
+          </div>`).join("")}
+        </div>` : ""}
+      </div>
+    </div>
+  </div>
+  ${renderLoginModal()}`;
+}
+
+function renderLoginModal(){
+  return `
+  <div class="modal-bg" id="loginModal" style="display:none">
+    <div class="modal">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="font-size:42px;margin-bottom:10px">🔐</div>
+        <h2 style="font-size:19px;font-weight:800;margin-bottom:4px">Admin Login</h2>
+        <p style="color:#6b6b8a;font-size:13px">Enter password to continue</p>
+      </div>
+      <input type="password" id="pwInput" class="inp" placeholder="Password…" style="margin-bottom:8px;letter-spacing:3px;font-size:15px"/>
+      <p id="pwErr" style="color:#f87171;font-size:12px;margin-bottom:10px;min-height:16px"></p>
+      <div class="row">
+        <button class="btn" id="loginBtn" style="flex:2;padding:12px">Login →</button>
+        <button class="btn-sm btn-ghost" id="cancelLogin" style="flex:1;padding:12px;border-radius:10px">Cancel</button>
+      </div>
+      <p style="margin-top:14px;font-size:11px;color:#6b6b8a;text-align:center">Default: <code style="background:#ffffff0a;padding:1px 6px;border-radius:4px;color:#7c6fff">admin@123</code></p>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════
+function renderAdmin(){
+  return `
+  <div class="admin-header">
+    <div class="row">
+      <button class="btn-sm btn-ghost" id="homeBtn">← Home</button>
+      <span style="font-weight:800;font-size:16px">📋 TrainingIQ Admin</span>
+    </div>
+    <div class="row">
+      <button class="btn-sm btn-ghost" id="setKeyBtn" title="Set API Key">${S.apiKey?"🔑 Key Set ✓":"🔑 Set API Key"}</button>
+      <button class="btn-sm btn-red" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+  <div style="max-width:880px;margin:22px auto;padding:0 16px">
+    <div class="tabs">
+      <button class="tab ${S.adminTab==="upload"?"active":""}" data-tab="upload">📤 Upload & Generate</button>
+      <button class="tab ${S.adminTab==="edit"?"active":""}" data-tab="edit">✏️ Edit Questions</button>
+      <button class="tab ${S.adminTab==="dashboard"?"active":""}" data-tab="dashboard">📊 Results</button>
+    </div>
+    ${S.adminTab==="upload"?renderUpload():""}
+    ${S.adminTab==="edit"?renderEdit():""}
+    ${S.adminTab==="dashboard"?renderDashboard():""}
+  </div>
+  ${renderKeyModal()}`;
+}
+
+function renderKeyModal(){
+  return `
+  <div class="modal-bg" id="keyModal" style="display:none">
+    <div class="modal">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:6px">🔑 Set Anthropic API Key</h2>
+      <p style="color:#6b6b8a;font-size:13px;margin-bottom:4px">Required to generate quiz questions from documents.</p>
+      <p style="color:#6b6b8a;font-size:12px;margin-bottom:14px">Get a free key at <strong style="color:#7c6fff">console.anthropic.com</strong> → API Keys</p>
+      <input type="password" id="keyInput" class="inp" placeholder="sk-ant-api03-…" style="margin-bottom:14px;font-family:monospace;font-size:13px" value="${esc(S.apiKey)}"/>
+      <div class="row">
+        <button class="btn" id="saveKeyBtn" style="flex:2;padding:11px">Save Key</button>
+        <button class="btn-sm btn-ghost" id="cancelKey" style="flex:1;padding:11px;border-radius:10px">Cancel</button>
+      </div>
+      <p style="margin-top:12px;font-size:11px;color:#6b6b8a">Key is stored in your browser only. Never shared.</p>
+    </div>
+  </div>`;
+}
+
+function renderUpload(){
+  if(S.uploading) return `
+  <div class="card fade" style="padding:52px;text-align:center">
+    <div class="spin" style="font-size:40px;margin-bottom:16px">⚙️</div>
+    <p style="font-weight:700;font-size:17px;margin-bottom:6px" id="uploadMsg">Processing…</p>
+    <p style="color:#6b6b8a;font-size:13px;margin-bottom:20px">Please wait, takes about 15–20 seconds</p>
+    <div style="width:200px;height:3px;background:rgba(255,255,255,.08);border-radius:3px;margin:0 auto;overflow:hidden">
+      <div style="height:100%;background:linear-gradient(90deg,#7c6fff,#a855f7);border-radius:3px;animation:bar 4s ease-in-out infinite"></div>
+    </div>
+  </div>`;
+
+  const quizList = [...S.quizzes].sort((a,b)=>b.createdAt-a.createdAt);
+  return `
+  <div class="fade">
+    ${!S.apiKey?`
+    <div style="background:#7c6fff18;border:1px solid #7c6fff44;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span style="color:#a5b4fc;font-size:13px;font-weight:600">⚠️ Set your API key first to generate quizzes</span>
+      <button class="btn-sm btn-purple" id="setKeyBtn2">Set API Key →</button>
+    </div>`:""}
+    <div class="upload-zone" id="uploadZone">
+      <div style="font-size:46px;margin-bottom:14px">📄</div>
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:6px">Upload Training Document</h3>
+      <p style="color:#6b6b8a;font-size:14px;margin-bottom:20px">Drag & drop here or click to browse</p>
+      <div style="display:flex;justify-content:center;gap:8px;margin-bottom:22px;flex-wrap:wrap">
+        ${["PDF","DOCX","DOC","TXT"].map(f=>`<span class="pill pill-purple">${f}</span>`).join("")}
+      </div>
+      <button class="btn btn-sm" id="browseBtn" style="padding:10px 28px;font-size:14px">📁 Choose File</button>
+      <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt" style="display:none"/>
+    </div>
+
+    ${quizList.length?`
+    <p style="font-weight:600;color:#6b6b8a;font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Your Quizzes</p>
+    ${quizList.map(q=>`
+    <div class="card" style="padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-weight:700;font-size:15px">${esc(q.title)}</span>
+          <span class="pill ${q.published?"pill-green":"pill-gray"}">${q.published?"● Live":"○ Draft"}</span>
+        </div>
+        <p style="color:#6b6b8a;font-size:12px">${q.questions?.length||0} questions · ${new Date(q.createdAt).toLocaleDateString()}</p>
+      </div>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="btn-sm btn-ghost" data-edit="${q.id}">✏️ Edit</button>
+        ${q.published
+          ?`<button class="btn-sm btn-purple" data-copy="${q.id}">${S.copied===q.id?"✓ Copied!":"🔗 Copy Link"}</button>`
+          :`<button class="btn-sm btn-green" data-publish="${q.id}" style="color:#fff">🚀 Publish</button>`}
+        <button class="btn-sm btn-red" data-delete="${q.id}">🗑</button>
+      </div>
+    </div>`).join("")}`:
+    `<div class="card" style="padding:32px;text-align:center;color:#6b6b8a;font-size:14px">No quizzes yet. Upload a document to get started.</div>`}
+  </div>`;
+}
+
+function renderEdit(){
+  const q = S.editing;
+  if(!q) return `
+  <div class="fade" style="text-align:center;padding:56px;color:#6b6b8a">
+    <div style="font-size:44px;margin-bottom:14px">📝</div>
+    <p style="font-size:15px;margin-bottom:18px">No quiz selected. Upload a document first.</p>
+    <button class="btn btn-sm" id="goUpload">← Go to Upload</button>
+  </div>`;
+
+  return `
+  <div class="fade">
+    <div class="card" style="padding:18px;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div>
+          <h3 style="font-weight:800;font-size:18px;margin-bottom:3px">${esc(q.title)}</h3>
+          <p style="color:#6b6b8a;font-size:12px">${q.questions?.length||0} questions · Edit then publish to share</p>
+        </div>
+        <div class="row" style="flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#6b6b8a">
+            Pass%
+            <input type="number" min="10" max="100" value="${q.passingPct||70}" id="passPct" class="inp inp-sm" style="width:58px"/>
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#6b6b8a">
+            Time
+            <input type="number" min="5" max="120" value="${q.timeLimit||20}" id="timeLim" class="inp inp-sm" style="width:58px"/>min
+          </label>
+          <button class="btn-sm btn-ghost" id="saveDraft">Save</button>
+          ${!q.published
+            ?`<button class="btn-sm btn-green" id="publishBtn" style="color:#fff">🚀 Publish Quiz</button>`
+            :`<button class="btn-sm btn-purple" id="copyLinkBtn">${S.copied===q.id?"✓ Copied!":"🔗 Copy Link"}</button>`}
+        </div>
+      </div>
+    </div>
+    ${(q.questions||[]).map((qn,i)=>`
+    <div class="card" data-qi="${i}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <span class="pill pill-purple">Q${i+1} · ${qn.type==="scenario"?"Scenario":"MCQ"}</span>
+      </div>
+      <textarea class="inp qtext" data-qi="${i}" style="min-height:64px;margin-bottom:12px">${esc(qn.text)}</textarea>
+      ${(qn.options||[]).map((opt,oi)=>`
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
+        <input type="radio" name="correct_${i}" value="${oi}" ${qn.correct===oi?"checked":""} class="correct-radio" data-qi="${i}" style="accent-color:#22c55e;cursor:pointer;width:15px;height:15px;flex-shrink:0"/>
+        <input type="text" value="${esc(opt)}" class="inp opt-inp" data-qi="${i}" data-oi="${oi}" style="border-color:${qn.correct===oi?"#22c55e55":"rgba(255,255,255,.07)"};background:${qn.correct===oi?"#22c55e08":"#12121e"}"/>
+      </div>`).join("")}
+      <input type="text" value="${esc(qn.explanation||"")}" class="inp exp-inp inp-sm" data-qi="${i}" placeholder="Explanation shown after quiz…" style="margin-top:8px;color:#6b6b8a;background:#0d0d18"/>
+    </div>`).join("")}
+  </div>`;
+}
+
+function renderDashboard(){
+  const filtered = getFiltered();
+  const avg = filtered.length?Math.round(filtered.reduce((s,a)=>s+a.pct,0)/filtered.length):0;
+  const pr = filtered.length?Math.round(filtered.filter(a=>a.passed).length/filtered.length*100):0;
+  return `
+  <div class="fade">
+    <div class="metrics">
+      ${[["Attempts",filtered.length,"📊","#e8e8f0"],["Avg Score",avg+"%","📈","#e8e8f0"],["Pass Rate",pr+"%","✅","#22c55e"],["Fail Rate",(100-pr)+"%","❌","#ef4444"]].map(([l,v,ic,c])=>`
+      <div class="metric">
+        <div style="font-size:24px;margin-bottom:8px">${ic}</div>
+        <div class="metric-val" style="color:${c}">${v}</div>
+        <div class="metric-lbl">${l}</div>
+      </div>`).join("")}
+    </div>
+    <div class="card" style="padding:12px;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <select id="fQuiz" class="inp" style="flex:1 1 140px;width:auto;cursor:pointer;font-size:13px">
+        <option value="all">All Quizzes</option>
+        ${S.quizzes.map(q=>`<option value="${q.id}" ${S.fQuiz===q.id?"selected":""}>${esc(q.title)}</option>`).join("")}
+      </select>
+      <input id="fAgent" class="inp" placeholder="Search agent…" value="${esc(S.fAgent)}" style="flex:2 1 150px;width:auto;font-size:13px"/>
+      <button class="btn btn-sm" id="exportBtn" style="white-space:nowrap">Export CSV ↓</button>
+    </div>
+    ${filtered.length===0?`
+    <div class="card" style="padding:40px;text-align:center;color:#6b6b8a">No results yet. Publish a quiz and share the link.</div>`:
+    `<div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            ${["Agent","ID","Quiz","Score","%","Status","Date"].map(h=>`<th>${h}</th>`).join("")}
+          </tr></thead>
+          <tbody>
+            ${filtered.map(a=>{const q=S.quizzes.find(x=>x.id===a.quizId);return`
+            <tr>
+              <td style="font-weight:600">${esc(a.name)}</td>
+              <td style="color:#6b6b8a">${esc(a.eid)}</td>
+              <td style="color:#6b6b8a;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(q?.title||"?")}</td>
+              <td>${a.score}/${a.total}</td>
+              <td style="font-weight:700;color:${a.passed?"#22c55e":"#ef4444"}">${a.pct}%</td>
+              <td><span class="pill ${a.passed?"pill-green":"pill-red"}">${a.passed?"Pass":"Fail"}</span></td>
+              <td style="color:#6b6b8a;white-space:nowrap">${new Date(a.ts).toLocaleDateString()}</td>
+            </tr>`;}).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════
+function renderQuiz(){
+  const quiz = S.quizzes.find(q=>q.id===S.activeQuizId);
+  if(!quiz) return `
+  <div class="center" style="flex-direction:column;gap:14px">
+    <div style="font-size:48px">❌</div>
+    <p style="color:#6b6b8a">Quiz not found or not published.</p>
+    <button class="btn" id="homeBtn">← Home</button>
+  </div>`;
+
+  if(!S.quizStarted) return `
+  <div class="center">
+    <div class="card fade" style="max-width:420px;width:100%;padding:40px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.5)">
+      <div style="font-size:46px;margin-bottom:14px">📝</div>
+      <h2 style="font-size:21px;font-weight:800;margin-bottom:6px">${esc(quiz.title)}</h2>
+      <p style="color:#6b6b8a;font-size:13px;margin-bottom:24px">${quiz.questions?.length} questions · ${quiz.timeLimit} min · Pass: ${quiz.passingPct}%</p>
+      <div class="col" style="text-align:left;margin-bottom:18px">
+        <input id="agentName" class="inp" placeholder="Your full name" value="${esc(S.agentName)}"/>
+        <input id="agentEid" class="inp" placeholder="Employee ID" value="${esc(S.agentEid)}"/>
+      </div>
+      <button class="btn btn-full" id="startBtn" style="box-shadow:0 4px 18px #7c6fff44">Start Quiz →</button>
+      <button id="backHome" style="display:block;width:100%;margin-top:10px;background:none;border:none;color:#6b6b8a;cursor:pointer;font-size:13px">← Back</button>
+    </div>
+  </div>`;
+
+  const q = S.questions[S.curQ];
+  const total = S.questions.length;
+  const prog = (S.curQ/total*100).toFixed(1);
+  return `
+  <div style="min-height:100vh;padding:24px 16px">
+    <div style="max-width:660px;margin:0 auto;animation:up .2s ease">
+      <div class="row" style="justify-content:space-between;margin-bottom:14px">
+        <span style="color:#6b6b8a;font-size:13px;font-weight:600">Q ${S.curQ+1} / ${total}</span>
+        ${S.timeLeft!==null?`<span style="font-family:monospace;font-weight:700;font-size:15px;padding:4px 10px;border-radius:7px;background:${S.timeLeft<120?"#ef444418":"rgba(255,255,255,.05)"};color:${S.timeLeft<120?"#ef4444":"#6b6b8a"};border:1px solid ${S.timeLeft<120?"#ef444433":"rgba(255,255,255,.07)"}">⏱ <span id="timerDisp">${fmt(S.timeLeft)}</span></span>`:""}
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${prog}%"></div></div>
+      <div class="card" style="padding:28px;margin-bottom:12px">
+        <span class="pill pill-purple" style="display:inline-block;margin-bottom:14px">${q?.type==="scenario"?"📌 Scenario":"📋 MCQ"}</span>
+        <p style="font-size:17px;font-weight:500;line-height:1.75;margin-bottom:22px">${esc(q?.text||"")}</p>
+        ${(q?.options||[]).map((opt,i)=>`
+        <div class="option ${S.answers[S.curQ]===i?"selected":""}" data-opt="${i}">
+          <div class="option-dot"><div class="option-inner"></div></div>
+          <span style="font-size:14px;line-height:1.5">${esc(opt)}</span>
+        </div>`).join("")}
+      </div>
+      <div class="row" style="margin-bottom:14px">
+        ${S.curQ>0?`<button class="btn-sm btn-ghost" id="prevBtn" style="flex:1;padding:11px;border-radius:10px">← Back</button>`:""}
+        ${S.curQ<total-1
+          ?`<button class="btn btn-sm" id="nextBtn" style="flex:2;padding:11px;${S.answers[S.curQ]===undefined?"opacity:.35":""}">Next →</button>`
+          :`<button class="btn-sm btn-green" id="submitBtn" style="flex:2;padding:11px;border-radius:10px;color:#fff;font-weight:700;${Object.keys(S.answers).length<total?"opacity:.35":""}">Submit (${Object.keys(S.answers).length}/${total})</button>`}
+      </div>
+      <div class="dots">
+        ${S.questions.map((_,i)=>`<div class="dot ${S.answers[i]!==undefined?"done":S.curQ===i?"cur":""}" data-di="${i}"></div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// RESULT
+// ═══════════════════════════════════════════
+function renderResult(){
+  const r = S.result;
+  if(!r) return `<div class="center"><button class="btn" id="homeBtn">← Home</button></div>`;
+  const {score,total,pct,passed,breakdown,name} = r;
+  return `
+  <div style="padding:28px 16px">
+    <div style="max-width:620px;margin:0 auto;animation:up .3s ease">
+      <div class="result-hero" style="background:${passed?"#22c55e0a":"#ef44440a"};border:1.5px solid ${passed?"#22c55e44":"#ef444444"}">
+        <div style="font-size:56px;margin-bottom:10px">${passed?"🎉":"😔"}</div>
+        <h2 style="font-size:26px;font-weight:800;color:${passed?"#22c55e":"#ef4444"};margin-bottom:6px">${passed?"Congratulations!":"Better luck next time"}</h2>
+        <p style="color:#6b6b8a;margin-bottom:18px;font-size:14px">Great effort, ${esc(name)}!</p>
+        <div style="font-size:52px;font-weight:800;color:${passed?"#22c55e":"#ef4444"};line-height:1">${score}<span style="font-size:26px;font-weight:400;color:#6b6b8a">/${total}</span></div>
+        <p style="color:#6b6b8a;margin-top:8px;font-size:15px">${pct}% — <strong style="color:${passed?"#22c55e":"#ef4444"}">${passed?"✅ PASSED":"❌ FAILED"}</strong></p>
+      </div>
+      <h3 style="font-weight:700;margin-bottom:14px;font-size:16px">📘 Review Answers</h3>
+      ${breakdown.map((b,i)=>`
+      <div class="card" style="border:1.5px solid ${b.ok?"#22c55e33":"#ef444433"};background:${b.ok?"#22c55e06":"#ef444406"};margin-bottom:10px">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <span style="color:#6b6b8a;font-size:12px;font-weight:600">Q${i+1}</span>
+          <span style="font-size:12px;font-weight:700;color:${b.ok?"#22c55e":"#ef4444"}">${b.ok?"✅ Correct":"❌ Wrong"}</span>
+        </div>
+        <p style="font-weight:500;line-height:1.65;margin-bottom:10px;font-size:14px">${esc(b.q.text)}</p>
+        ${!b.ok&&b.sel!==undefined?`<p style="color:#ef4444;font-size:13px;margin-bottom:5px">Your answer: ${esc(b.q.options[b.sel])}</p>`:""}
+        <p style="color:#22c55e;font-size:13px;font-weight:600;margin-bottom:8px">✓ Correct: ${esc(b.q.options[b.q.correct])}</p>
+        ${b.q.explanation?`<p style="color:#6b6b8a;font-size:12px;line-height:1.6;border-top:1px solid rgba(255,255,255,.07);padding-top:8px;margin:0">💡 ${esc(b.q.explanation)}</p>`:""}
+      </div>`).join("")}
+      <button class="btn btn-full" id="homeBtn" style="margin-top:6px;box-shadow:0 4px 18px #7c6fff44">← Back to Home</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// EVENT BINDING
+// ═══════════════════════════════════════════
+function bindEvents(){
+  const on = (id, ev, fn) => { const el=document.getElementById(id); if(el) el.addEventListener(ev,fn); };
+  const onAll = (sel, ev, fn) => { document.querySelectorAll(sel).forEach(el=>el.addEventListener(ev,fn)); };
+
+  // HOME
+  if(S.view==="home"){
+    on("adminBtn","click",()=>{
+      if(S.auth){ nav("admin"); }
+      else{ document.getElementById("loginModal").style.display="flex"; setTimeout(()=>document.getElementById("pwInput")?.focus(),100); }
+    });
+    on("goBtn","click",goQuiz);
+    on("linkBox","keydown",e=>{ if(e.key==="Enter") goQuiz(); });
+    on("loginBtn","click",doLogin);
+    on("pwInput","keydown",e=>{ if(e.key==="Enter") doLogin(); });
+    on("cancelLogin","click",()=>{ document.getElementById("loginModal").style.display="none"; });
+    onAll("[id^='homeQ_']","click",function(){ S.activeQuizId=this.dataset.qid; nav("quiz"); });
+  }
+
+  // ADMIN
+  if(S.view==="admin"){
+    on("homeBtn","click",()=>nav("home"));
+    on("logoutBtn","click",()=>{ DB.del("tiq:auth"); S.auth=false; nav("home"); });
+    on("setKeyBtn","click",()=>{ document.getElementById("keyModal").style.display="flex"; });
+    on("setKeyBtn2","click",()=>{ document.getElementById("keyModal").style.display="flex"; });
+    on("saveKeyBtn","click",()=>{
+      const k=document.getElementById("keyInput").value.trim();
+      if(!k){toast("Please enter a key",true);return;}
+      S.apiKey=k; localStorage.setItem(API_KEY_STORAGE,k);
+      document.getElementById("keyModal").style.display="none";
+      toast("✅ API key saved!"); render();
+    });
+    on("cancelKey","click",()=>{ document.getElementById("keyModal").style.display="none"; });
+    onAll(".tab","click",function(){ S.adminTab=this.dataset.tab; render(); });
+
+    // Upload
+    on("browseBtn","click",()=>document.getElementById("fileInput")?.click());
+    const fi = document.getElementById("fileInput");
+    if(fi) fi.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) doUpload(f); });
+    const uz = document.getElementById("uploadZone");
+    if(uz){
+      uz.addEventListener("dragover",e=>{ e.preventDefault(); uz.classList.add("drag"); });
+      uz.addEventListener("dragleave",()=>uz.classList.remove("drag"));
+      uz.addEventListener("drop",e=>{ e.preventDefault(); uz.classList.remove("drag"); const f=e.dataTransfer.files[0]; if(f) doUpload(f); });
+      uz.addEventListener("click",e=>{ if(e.target.id!=="browseBtn") document.getElementById("fileInput")?.click(); });
+    }
+    on("goUpload","click",()=>{ S.adminTab="upload"; render(); });
+
+    // Quiz list actions
+    onAll("[data-edit]","click",function(){
+      const q=S.quizzes.find(x=>x.id===this.dataset.edit);
+      if(q){ S.editing={...q,questions:q.questions.map(x=>({...x,options:[...x.options]}))}; S.adminTab="edit"; render(); }
+    });
+    onAll("[data-publish]","click",function(){
+      const id=this.dataset.publish; const q=S.quizzes.find(x=>x.id===id);
+      if(q){ q.published=true; saveQuiz(q); toast("🎉 Published!"); render(); }
+    });
+    onAll("[data-copy]","click",function(){
+      const id=this.dataset.copy;
+      const url=location.origin+location.pathname+(location.pathname.endsWith("index.html")?"":"")+"?quiz="+id;
+      navigator.clipboard.writeText(url).catch(()=>{});
+      S.copied=id; setTimeout(()=>{ S.copied=null; render(); },2000);
+      toast("📋 Link copied!"); render();
+    });
+    onAll("[data-delete]","click",function(){
+      const id=this.dataset.delete; const q=S.quizzes.find(x=>x.id===id);
+      if(q&&confirm("Delete '"+q.title+"'?")){ delQuiz(id); if(S.editing?.id===id) S.editing=null; toast("Deleted."); render(); }
+    });
+
+    // Edit tab
+    on("saveDraft","click",()=>{
+      if(!S.editing) return;
+      const p=parseInt(document.getElementById("passPct")?.value||70);
+      const t=parseInt(document.getElementById("timeLim")?.value||20);
+      S.editing.passingPct=p; S.editing.timeLimit=t;
+      readEditForm();
+      saveQuiz(S.editing);
+      toast("✅ Saved!");
+    });
+    on("publishBtn","click",()=>{
+      if(!S.editing) return;
+      readEditForm();
+      S.editing.published=true;
+      saveQuiz(S.editing);
+      toast("🎉 Published! Copy the link.");
+      render();
+    });
+    on("copyLinkBtn","click",()=>{
+      if(!S.editing) return;
+      const url=location.origin+location.pathname+"?quiz="+S.editing.id;
+      navigator.clipboard.writeText(url).catch(()=>{});
+      S.copied=S.editing.id; setTimeout(()=>{ S.copied=null; render(); },2000);
+      toast("📋 Link copied!"); render();
+    });
+
+    // Dashboard
+    on("exportBtn","click",exportCSV);
+    on("fQuiz","change",function(){ S.fQuiz=this.value; render(); });
+    on("fAgent","input",function(){ S.fAgent=this.value; render(); });
+  }
+
+  // QUIZ
+  if(S.view==="quiz"){
+    on("homeBtn","click",()=>nav("home"));
+    on("backHome","click",()=>nav("home"));
+    on("startBtn","click",()=>{
+      const name=document.getElementById("agentName")?.value.trim();
+      const eid=document.getElementById("agentEid")?.value.trim();
+      if(!name||!eid){ toast("Enter your name and ID first",true); return; }
+      S.agentName=name; S.agentEid=eid;
+      const quiz=S.quizzes.find(q=>q.id===S.activeQuizId);
+      let qs=[...quiz.questions];
+      if(quiz.randomize) qs=qs.sort(()=>Math.random()-.5);
+      S.questions=qs; S.curQ=0; S.answers={}; S.quizStarted=true;
+      if(quiz.timeLimit){
+        S.timeLeft=quiz.timeLimit*60;
+        S.timerInterval=setInterval(()=>{
+          S.timeLeft--;
+          const td=document.getElementById("timerDisp");
+          if(td) td.textContent=fmt(S.timeLeft);
+          if(S.timeLeft<=0){ clearInterval(S.timerInterval); doSubmit(); }
+        },1000);
+      }
+      render();
+    });
+    onAll(".option","click",function(){
+      const i=parseInt(this.dataset.opt);
+      S.answers[S.curQ]=i;
+      document.querySelectorAll(".option").forEach((o,oi)=>{
+        o.classList.toggle("selected",oi===i);
+      });
+      // update submit button opacity
+      const sub=document.getElementById("submitBtn");
+      if(sub) sub.style.opacity=Object.keys(S.answers).length>=S.questions.length?"1":".35";
+    });
+    on("prevBtn","click",()=>{ S.curQ--; render(); });
+    on("nextBtn","click",()=>{ if(S.answers[S.curQ]!==undefined){ S.curQ++; render(); } });
+    on("submitBtn","click",()=>{ if(Object.keys(S.answers).length>=S.questions.length) doSubmit(); });
+    onAll(".dot","click",function(){ S.curQ=parseInt(this.dataset.di); render(); });
+  }
+
+  // RESULT
+  if(S.view==="result"){
+    on("homeBtn","click",()=>{
+      S.result=null; S.agentName=""; S.agentEid="";
+      S.quizStarted=false; S.questions=[]; S.answers={}; S.curQ=0; S.timeLeft=null;
+      nav("home");
+    });
+  }
+}
+
+// ═══════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════
+function doLogin(){
+  const pw=document.getElementById("pwInput")?.value||"";
+  if(pw===ADMIN_PASS){
+    DB.set("tiq:auth",true); S.auth=true;
+    document.getElementById("loginModal").style.display="none";
+    S.adminTab="upload"; nav("admin");
+  } else {
+    const err=document.getElementById("pwErr");
+    if(err){ err.textContent="Wrong password. Try again."; }
+    document.getElementById("pwInput").value="";
+    document.getElementById("pwInput").focus();
+  }
+}
+
+function goQuiz(){
+  let id=(document.getElementById("linkBox")?.value||"").trim();
+  try{ id=new URL(id).searchParams.get("quiz")||id; }catch{}
+  const q=S.quizzes.find(x=>x.id===id&&x.published);
+  if(q){ S.activeQuizId=id; nav("quiz"); }
+  else toast("Quiz not found or not published",true);
+}
+
+async function doUpload(file){
+  if(!S.apiKey){ toast("⚠️ Set your API key first (click 🔑 button)",true); return; }
+  const ext=file.name.split(".").pop().toLowerCase();
+  if(!["pdf","docx","doc","txt"].includes(ext)){ toast("Use PDF, DOCX, or TXT only",true); return; }
+  S.uploading=true; render();
+  try{
+    const el=document.getElementById("uploadMsg"); if(el) el.textContent="Reading document...";
+    const text=await extractText(file);
+    if(!text||text.trim().length<20) throw new Error("Document appears empty or unreadable.");
+    if(el) el.textContent="AI generating 10 quiz questions...";
+    const title=file.name.replace(/\.[^.]+$/,"");
+    const data=await generateQuiz(text,title);
+    if(!data?.questions?.length) throw new Error("No questions generated. Try again.");
+    const quiz={id:uid(),title,questions:data.questions,passingPct:70,timeLimit:20,randomize:true,published:false,createdAt:Date.now()};
+    saveQuiz(quiz);
+    S.editing={...quiz,questions:quiz.questions.map(x=>({...x,options:[...x.options]}))};
+    S.adminTab="edit";
+    toast("✅ "+data.questions.length+" questions ready! Review below.");
+  }catch(e){
+    toast("❌ "+e.message,true);
+  }
+  S.uploading=false; render();
+}
+
+function readEditForm(){
+  if(!S.editing) return;
+  document.querySelectorAll(".qtext").forEach(el=>{
+    const i=parseInt(el.dataset.qi);
+    if(S.editing.questions[i]) S.editing.questions[i].text=el.value;
+  });
+  document.querySelectorAll(".opt-inp").forEach(el=>{
+    const i=parseInt(el.dataset.qi),oi=parseInt(el.dataset.oi);
+    if(S.editing.questions[i]) S.editing.questions[i].options[oi]=el.value;
+  });
+  document.querySelectorAll(".correct-radio:checked").forEach(el=>{
+    const i=parseInt(el.dataset.qi);
+    if(S.editing.questions[i]) S.editing.questions[i].correct=parseInt(el.value);
+  });
+  document.querySelectorAll(".exp-inp").forEach(el=>{
+    const i=parseInt(el.dataset.qi);
+    if(S.editing.questions[i]) S.editing.questions[i].explanation=el.value;
+  });
+  const p=parseInt(document.getElementById("passPct")?.value||70);
+  const t=parseInt(document.getElementById("timeLim")?.value||20);
+  S.editing.passingPct=p; S.editing.timeLimit=t;
+}
+
+function doSubmit(){
+  if(S.timerInterval) clearInterval(S.timerInterval);
+  const quiz=S.quizzes.find(q=>q.id===S.activeQuizId);
+  let score=0;
+  const breakdown=S.questions.map((q,i)=>{
+    const sel=S.answers[i],ok=sel===q.correct;
+    if(ok) score++;
+    return{q,sel,ok};
+  });
+  const pct=Math.round(score/S.questions.length*100);
+  const passed=pct>=(quiz?.passingPct||70);
+  const att={id:uid(),quizId:quiz.id,name:S.agentName,eid:S.agentEid,score,total:S.questions.length,pct,passed,breakdown,ts:Date.now()};
+  saveAttempt(att);
+  S.result=att; S.quizStarted=false;
+  nav("result");
+}
+
+// ═══════════════════════════════════════════
+// CHECK URL FOR QUIZ ID
+// ═══════════════════════════════════════════
+function checkURL(){
+  const params=new URLSearchParams(location.search);
+  const qid=params.get("quiz");
+  if(qid&&S.quizzes.find(q=>q.id===qid)){
+    S.activeQuizId=qid; S.view="quiz";
+  }
+}
+
+// ═══════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════
+loadData();
+checkURL();
+render();
+</script>
+</body>
+</html>
